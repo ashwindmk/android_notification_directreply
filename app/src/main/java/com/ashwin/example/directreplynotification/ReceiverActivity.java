@@ -1,8 +1,7 @@
 package com.ashwin.example.directreplynotification;
 
-import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.app.RemoteInput;
 import android.support.v7.app.AppCompatActivity;
@@ -11,9 +10,6 @@ import android.util.Log;
 import android.widget.TextView;
 
 public class ReceiverActivity extends AppCompatActivity {
-
-    private static final String TAG = ReceiverActivity.class.getSimpleName();
-
     private TextView mReplyTextView;
 
     @Override
@@ -21,41 +17,37 @@ public class ReceiverActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_receiver);
 
+        mReplyTextView = (TextView) findViewById(R.id.replyTextView);
+
         Intent intent = getIntent();
-
-        Utils.logIntent(TAG, intent);
-
-        handleDirectReply(intent);
+        if (intent != null) {
+            Utils.logIntent(intent);
+            String action = intent.getAction();
+            if (Constants.DIRECT_REPLY.equals(action)) {
+                handleDirectReply(intent);
+            } else if (Constants.DISMISS.equals(action)) {
+                mReplyTextView.setText("Dismissed");
+                dismiss(this);
+            }
+        }
     }
 
     private void handleDirectReply(Intent intent) {
-        mReplyTextView = (TextView) findViewById(R.id.replyTextView);
-
         Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
-
         if (remoteInput != null) {
-            String reply = remoteInput.getCharSequence(Constants.KEY_DIRECT_REPLY).toString();
-
-            Log.w(Constants.DEBUG_LOGGING, TAG + " > handleDirectReply() > reply: " + reply);
+            String reply = String.valueOf(remoteInput.getCharSequence(Constants.DIRECT_REPLY));
+            Log.w(Constants.DEBUG_LOG,"Reply: " + reply);
             mReplyTextView.setText(reply);
 
-            // Update notification
-            NotificationCompat.Builder repliedNotificationBuilder = new NotificationCompat.Builder(this)
-                            .setSmallIcon(android.R.drawable.stat_notify_chat)
-                            .setContentText("Direct Reply Received")
-                            .setAutoCancel(true);
-
-            PendingIntent dismissIntent = PendingIntent.getActivity(this, 0, new Intent(), PendingIntent.FLAG_CANCEL_CURRENT);
-            repliedNotificationBuilder.setContentIntent(dismissIntent);
-
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-            notificationManager.notify(Constants.NOTIFICATION_ID, repliedNotificationBuilder.build());
-
-            // OR simply dismiss the notification
-            //notificationManager.cancel(Constants.NOTIFICATION_ID);
+            dismiss(this);
         } else {
             mReplyTextView.setText("No Reply Received!");
         }
+    }
 
+    private void dismiss(Context context) {
+        Log.w(Constants.DEBUG_LOG, "Dismissing notification");
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        notificationManager.cancel(Constants.NOTIFICATION_ID);
     }
 }
